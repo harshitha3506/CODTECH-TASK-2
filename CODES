@@ -1,0 +1,233 @@
+src/index.js :
+
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import './index.css'; // Optional CSS for the app
+import App from './App';
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+
+
+src/App.js :
+
+import React from 'react';
+import Chat from './Chat';
+
+const App = () => {
+  return (
+    <div>
+      <h1>Real-time Chat Application</h1>
+      <Chat />
+    </div>
+  );
+};
+
+export default App;
+
+
+
+// src/Chat.js
+import React, { useEffect, useState } from 'react';
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, orderBy } from "firebase/firestore";
+import { getAuth, signInAnonymously } from "firebase/auth";
+import './Chat.css'; // Import the CSS file
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyAKpR1jtUCT8dAngEFUZOmOnjqR_-DX7wQ",
+  authDomain: "newchatapp-6e40f.firebaseapp.com",
+  projectId: "newchatapp-6e40f",
+  storageBucket: "newchatapp-6e40f.appspot.com",
+  messagingSenderId: "460946031677",
+  appId: "1:460946031677:web:c030ec1521ead16cbc5654",
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+const Chat = () => {
+  const [messages, setMessages] = useState([]);
+  const [text, setText] = useState('');
+
+  // Fetch messages from Firestore in real-time
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'messages'), (snapshot) => {
+      const messagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setMessages(messagesData);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Sign in anonymously
+  useEffect(() => {
+    signInAnonymously(auth).catch((error) => {
+      console.error("Error signing in anonymously:", error);
+    });
+  }, []);
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (text.trim()) {
+      await addDoc(collection(db, 'messages'), {
+        text,
+        timestamp: serverTimestamp(),
+        uid: auth.currentUser.uid,
+      });
+      setText(''); // Clear the input field
+    }
+  };
+
+  return (
+    <div>
+      <ul>
+        {messages.map(message => (
+          <li key={message.id}>
+            <strong>{message.uid === auth.currentUser.uid ? 'You' : 'Other'}:</strong> {message.text}
+          </li>
+        ))}
+      </ul>
+      <form onSubmit={handleSendMessage}>
+        <input 
+          type="text" 
+          value={text} 
+          onChange={(e) => setText(e.target.value)} 
+          placeholder="Type a message..." 
+        />
+        <button type="submit">Send</button>
+      </form>
+    </div>
+  );
+};
+
+export default Chat;
+
+
+
+
+
+src/Chat.css
+
+/* General Styles */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  background-color: #e9ecef; /* Light gray background */
+  margin: 0;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.chat-container {
+  background-color: #ffffff; /* White background for chat area */
+  border-radius: 10px;
+  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header Styles */
+h1 {
+  text-align: center;
+  color: #495057; /* Darker gray for text */
+  margin-bottom: 20px;
+}
+
+/* Message Box Styles */
+.messages {
+  flex-grow: 1;
+  max-height: 400px;
+  overflow-y: auto;
+  margin-bottom: 15px;
+  padding: 10px;
+  border: 1px solid #dee2e6; /* Light gray border */
+  border-radius: 5px;
+  background-color: #f8f9fa; /* Very light gray background */
+}
+
+.messages div {
+  margin: 8px 0;
+  padding: 8px;
+  border-radius: 5px;
+}
+
+/* Sender Styles */
+.messages .sent {
+  background-color: #d1e7dd; /* Light green */
+  align-self: flex-end;
+}
+
+/* Receiver Styles */
+.messages .receive {
+  background-color: #f8d7da; /* Light red */
+  align-self: flex-start;
+}
+
+/* Input Styles */
+input[type="text"] {
+  padding: 12px;
+  border: 1px solid #ced4da; /* Light gray border */
+  border-radius: 5px;
+  margin-bottom: 10px;
+  font-size: 16px;
+  transition: border-color 0.3s;
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: #80bdff; /* Light blue border on focus */
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
+
+/* Button Styles */
+button {
+  padding: 12px;
+  border: none;
+  border-radius: 5px;
+  background-color: #007bff; /* Blue background */
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+button:hover {
+  background-color: #0056b3; /* Darker blue on hover */
+}
+
+/* Responsive Styles */
+@media (max-width: 600px) {
+  .chat-container {
+    width: 90%;
+    padding: 15px;
+  }
+
+  h1 {
+    font-size: 24px;
+  }
+
+  input[type="text"] {
+    font-size: 14px;
+  }
+
+  button {
+    font-size: 14px;
+  }
+}
